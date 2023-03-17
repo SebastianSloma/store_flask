@@ -1,8 +1,8 @@
-from flask_login import login_user, logout_user,login_required
+from flask_login import login_user, logout_user, login_required, current_user
 from store import app
-from flask import render_template, redirect, url_for, flash
+from flask import render_template, redirect, url_for, flash, request
 from store.models import Item, User
-from store.forms import RegisterForm, LoginForm
+from store.forms import RegisterForm, LoginForm, PurchaseItemForm
 from store import db
 
 
@@ -15,9 +15,22 @@ def home_page():
 @app.route('/market')
 @login_required
 def market_page():
+    purchase_form = PurchaseItemForm()
+    if request.method == "POST":
+        purchased_item = request.form.get('purchased_item')
+        p_item_object = Item.query.filter_by(name=purchased_item).first()
+        if p_item_object:
+            if current_user.can_purchase(p_item_object):
+                p_item_object.buy(current_user)
+                flash(f"Congratulations! You purchased {p_item_object.name} for {p_item_object.price}$", category='success')
+            else:
+                flash(f"Unfortunately, you don't have enough money to purchase {p_item_object.name}!", category='danger')
 
-    items = Item.query.all()
-    return render_template('market.html', items=items)
+            return redirect(url_for('market_page'))
+
+    if request.method == "GET":
+        items = Item.query.filter_by(owner=None)
+        return render_template('market.html', items=items, purchase_form=purchase_form)
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -30,7 +43,8 @@ def register_page():
         db.session.add(user_to_create)
         db.session.commit()
         login_user(user_to_create)
-        flash(f"Account created successfully! You are now logged in as {user_to_create.username}", category='success')
+        flash(
+            f"Account created successfully! You are now logged in as {user_to_create.username}", category='success')
         return redirect(url_for('market_page'))
     if form.errors != {}:  # If there are not errors from the validations
         for err_msg in form.errors.values():
@@ -42,16 +56,20 @@ def register_page():
 def login_page():
     form = LoginForm()
     if form.validate_on_submit():
-        attempted_user = User.query.filter_by(username=form.username.data).first()
+        attempted_user = User.query.filter_by(
+            username=form.username.data).first()
         if attempted_user and attempted_user.check_password_correction(
                 attempted_password=form.password.data
         ):
             login_user(attempted_user)
-            flash(f'Success! You are logged in as: {attempted_user.username}', category='success')
+            flash(
+                f'Success! You are logged in as: {attempted_user.username}', category='success')
             return redirect(url_for('market_page'))
         else:
-            flash('Username and password are not match! Please try again', category='danger')
+            flash('Username and password are not match! Please try again',
+                  category='danger')
     return render_template('login.html', form=form)
+
 
 @app.route('/logout')
 def logout_page():
