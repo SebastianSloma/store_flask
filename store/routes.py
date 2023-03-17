@@ -1,6 +1,6 @@
 from store import app
-from flask import render_template, redirect, url_for
-from store.models import Item
+from flask import render_template, redirect, url_for, flash
+from store.models import Item, User
 from store.forms import RegisterForm
 from store import db
 
