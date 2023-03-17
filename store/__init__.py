@@ -1,3 +1,4 @@
+from store import routes
 from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
@@ -10,5 +11,5 @@ app.config['SECRET_KEY'] = "mySecretK3y"
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
-
-from store import routes
+login_manager.login_view = "login_page"
+login_manager.login_message_category = "info"
